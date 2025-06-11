@@ -1,0 +1,313 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+Кафедра «Програмної інженерії»
+
+
+
+ЗВІТ
+З лабораторної роботи № 2
+з дисципліни «Архітектура програмного забезпечення»
+
+
+
+
+Виконав:
+ст. гр. ПЗПІ-22-2
+Глинський В. Ю.	Перевірив:
+ ст.викладач каф. ПІ
+Сокорчук І. П.
+	
+
+
+
+Харків 2025
+ 
+1 ІСТОРІЯ ЗМІН
+
+У цьому розділі представлено історію внесених змін до звіту, що наведено у табл.1.
+№	Дата	Версія звіту	Опис змін та виправлень
+1	10.06.25	0.1	Створено розділ «Завдання»
+2	10.06.25	0.1	Створено розділ «Опис виконаної роботи»
+3	10.06.25	0.1	Створено розділ «Висновки»
+
+ 
+2 ЗАВДАННЯ
+
+
+Мета лабораторної роботи — розширення серверної частини існуючої програмної системи «LevelUp» для оптимізації процесу управління завданнями, підвищення мотивації співробітників та підтримки їхнього прогресу в досягненні особистих і організаційних цілей.
+Розширити функціонал бази даних для серверної частини та прикладного програмного інтерфейсу для програмного продукту LevelUp. Додати розширений функціонал для розрахунку винагород і прогресу користувачів на основі їхніх даних
+
+ 
+3 ОПИС ВИКОНАНОЇ РОБОТИ
+
+
+3.1 Математична обробка прикладних даних
+
+Покращення математичних формул для розрахунку необхідного досвіду (XP) для наступного рівня
+Для точного визначення кількості досвіду (XP), необхідного для переходу на наступний рівень у системі «LevelUp», використовується покроковий алгоритм, який базується на адаптивній формулі з урахуванням поточного рівня користувача, базового досвіду та факторів зростання. Цей підхід забезпечує збалансований і мотиваційний прогрес для співробітників.
+
+1.	Перевірка вхідних даних
+Алгоритм перевіряє, чи є поточний рівень користувача (currentLevel) більшим за 0. Якщо умова не виконується, генерується виняток ArgumentException із повідомленням "Level must be greater than 0.", щоб уникнути некоректних обчислень.
+
+2.	Базова кількість досвіду (baseXp)
+Початкова кількість досвіду встановлюється як базове значення (baseXp, за замовчуванням 100 одиниць), яке слугує основою для подальших розрахунків. Це значення можна налаштувати залежно від специфіки завдань.
+
+3.	Експоненційний ріст (growthFactor)
+Для відображення прогресії складності рівня застосовується експоненціальна функція Math.Pow(currentLevel, growthFactor), де growthFactor (за замовчуванням 1.2) визначає швидкість зростання вимог до досвіду. Чим вищий рівень, тим більше досвіду потрібно, що мотивує користувачів до послідовного виконання завдань.
+4.	Бонус за прогрес (progressBonus)
+Додається бонусна складова, яка враховує поточний рівень і логарифмічну залежність прогресу: progressBonus * currentLevel * Math.Log(currentLevel + 1). Тут progressBonus (за замовчуванням 20) є коефіцієнтом, що додає додатковий досвід залежно від рівня, стимулюючи тривалу активність. Логарифмічна функція забезпечує плавне зростання бонусу з підвищенням рівня.
+5.	Фінальний розрахунок необхідного досвіду
+Загальна кількість досвіду для наступного рівня обчислюється як сума експоненційної складової та бонусу:
+xpForNextLevel = baseXp * Math.Pow(currentLevel, growthFactor) + (progressBonus * currentLevel * Math.Log(currentLevel + 1)).
+Результат округляється вгору до найближчого цілого числа за допомогою Math.Ceiling, щоб уникнути дробових значень і забезпечити чіткі цілі для користувачів.
+6.	Адаптивність до цілей
+Формула гнучко адаптується до індивідуального прогресу: 
+•	Для початкових рівнів (1–5) зростання досвіду є помірним, що полегшує початок роботи з системою.
+•	Для вищих рівнів (10+) зростання стає значним, що мотивує до виконання складніших завдань або командної роботи.
+
+
+3.2 Створення можливості резервного копіювання бази даних для забезпечення безпеки даних
+
+Для забезпечення безпеки зберігання даних було розроблено спеціальний сервіс створення резервної копії бази даних у нашій серверній частині додатку. Також був реалізований контролер з POST методом для адміністратора.
+Алгоритм дії створеного бекапу:
+1.	Отримання директорії для збереження бекапу:
+Контролер отримує шлях до директорії для збереження резервної копії, використовуючи ContentRootPath та піддиректорію Backups.
+2.	Перевірка існування директорії:
+Якщо директорія для бекапів не існує, вона створюється автоматично.
+3.	Виклик сервісу резервного копіювання:
+Контролер викликає метод BackupDatabaseAsync сервісу DatabaseBackupService, передаючи шлях до директорії для збереження бекапу.
+4.	Генерація унікальної назви файлу:
+Сервіс формує унікальну назву файлу резервної копії з поточною датою та часом.
+5.	Виконання SQL-команди резервного копіювання:
+Сервіс встановлює з'єднання з базою даних через рядок підключення з конфігураційного файлу та виконує динамічну SQL-команду BACKUP DATABASE, яка створює резервну копію у вказаній директорії.
+6.	Повернення результату:
+Якщо резервне копіювання виконано успішно, контролер повертає користувачу повідомлення про успіх із назвою створеного файлу. У разі помилки повертається повідомлення з описом помилки.
+ 
+4 ВИСНОВКИ
+
+
+У результаті виконання лабораторної роботи було проведено розширення серверної частини існуючої програмної системи «LevelUp» для оптимізації процесу управління завданнями, підвищення мотивації співробітників та підтримки їхнього прогресу в досягненні особистих і організаційних цілей.
+Також було розширено функціонал бази даних для серверної частини та прикладного програмного інтерфейсу для програмного продукту LevelUp, додано розширений функціонал для розрахунку винагород і прогресу користувачів на основі їхніх даних.
+
+
+ДОДАТОК А
+
+Посилання на відеозапис доповіді та текст хронологічного опису
+
+Відеозапис презентації результатів лабораторної роботи: https://youtu.be/LDkIIscy_-g
+
+
+00:00 Вступ 
+00:45 Опис виконаної роботи 
+03:23 Створення можливостей резервного копіювання  
+04:48 Висновки 
+05:23 Демонстрація функціоналу 
+07:07 Графічні матеріали
+ 
+
+ДОДАТОК Б
+Графічні матеріали
+ 
+Рисунок Б.1 – ER-модель даних
+ 
+Рисунок Б.2 — Структура бази даних
+
+
+ 
+Рисунок Б.3 – UML-діаграма прецедентів
+ 
+Рисунок Б.4 – UML діаграма розгортання
+ДОДАТОК В
+Програмний код
+В.1 Математична обробка прикладних даних
+
+GitHub репозиторій: https://github.com/NureHlynskyiVadym/apz-pzpi-22-2-hlynskyi-vadym/blob/main/Lab2/pzpi-22-2-hlynskyi-vadym-lab2/Controllers/LevelController.cs
+
+1.         public int CalculateXpForNextLevel(int currentLevel, int baseXp = 100, double growthFactor = 1.2, int progressBonus = 20)
+2.         {
+3.             if (currentLevel <= 0)
+4.                 throw new ArgumentException("Level must be greater than 0.");
+5. 
+6.             double xpForNextLevel = baseXp * Math.Pow(currentLevel, growthFactor)
+7.                                   + (progressBonus * currentLevel * Math.Log(currentLevel + 1));
+8. 
+9.             return (int)Math.Ceiling(xpForNextLevel);
+10.         }
+11. 
+12.         [HttpPost("level-up/{userId}")]
+13.         public async Task<IActionResult> LevelUp(int userId)
+14.         {
+15.             var user = _userRepository.GetUserById(userId);
+16. 
+17.             if (user == null)
+18.                 return NotFound("User not found.");
+19. 
+20.             if (user.XP >= user.XPToNextLevel)
+21.             {
+22.                 user.XP -= user.XPToNextLevel;
+23. 
+24.                 user.Level++;
+25. 
+26.                 user.XPToNextLevel = CalculateXpForNextLevel(user.Level);
+27. 
+28.                 _userRepository.UpdateUser(user);
+29. 
+30.                 return Ok(new
+31.                 {
+32.                     Message = "Level up successful!",
+33.                     NewLevel = user.Level,
+34.                     RemainingXP = user.XP,
+35.                     XPToNextLevel = user.XPToNextLevel
+36.                 });
+37.             }
+38. 
+39.             return BadRequest(new
+40.             {
+41.                 Message = "Not enough XP to level up.",
+42.                 CurrentXP = user.XP,
+43.                 XPToNextLevel = user.XPToNextLevel
+44.             });
+45.         }
+
+
+В.2 Адміністрування бізнес-логіки системи
+
+GitHub репозиторій: https://github.com/NureHlynskyiVadym/apz-pzpi-22-2-hlynskyi-vadym/blob/main/Lab2/pzpi-22-2-hlynskyi-vadym-lab2/Controllers/AdminController.cs
+
+1. using LevelUp.Interfaces;
+2. using LevelUp.Models;
+3. using Microsoft.AspNetCore.Authorization;
+4. using Microsoft.AspNetCore.Mvc;
+5. 
+6. namespace LevelUp.Controllers
+7. {
+8.     [ApiController]
+9.     [Route("api/[controller]")]
+10.     public class AdminController : ControllerBase
+11.     {
+12.         private readonly IUserRepository _userRepository;
+13.         private readonly IGroupRepository _groupRepository;
+14.         private readonly ITaskRepository _taskRepository;
+15. 
+16.         public AdminController(IUserRepository userRepository, IGroupRepository groupRepository, ITaskRepository taskRepository)
+17.         {
+18.             _userRepository = userRepository;
+19.             _groupRepository = groupRepository;
+20.             _taskRepository = taskRepository;
+21.         }
+22. 
+23.         
+24. 
+25.         [HttpPut("users/{id}/role")]
+26.         public IActionResult UpdateUserRole(int id)
+27.         {
+28. 
+29.             var user = _userRepository.GetUserById(id);
+30.             if (user == null)
+31.                 return NotFound(new { success = false, message = $"User with ID {id} not found." });
+32. 
+33.             user.Admin = !user.Admin;
+34.             if (!_userRepository.UpdateUser(user))
+35.                 return StatusCode(500, new { success = false, message = "Error updating user role." });
+36. 
+37.             return Ok(new { success = true, data = user.Admin });
+38.         }
+39. 
+40.         [HttpDelete("users/{id}")]
+41.         public IActionResult DeleteUser(int id)
+42.         {
+43. 
+44.             if (!_userRepository.DeleteUser(id))
+45.                 return NotFound(new { success = false, message = $"User with ID {id} not found." });
+46. 
+47.             return Ok(new { success = true });
+48.         }
+49. 
+50.         [HttpGet("users")]
+51.         public IActionResult GetAllUsers()
+52.         {
+53. 
+54.             var users = _userRepository.GetUsers();
+55.             return Ok(new { success = true, data = users });
+56.         }
+57. 
+58.         [HttpDelete("groups/{id}")]
+59.         public IActionResult DeleteGroup(int id)
+60.         {
+61. 
+62.             if (!_groupRepository.DeleteGroup(id))
+63.                 return NotFound(new { success = false, message = $"Group with ID {id} not found." });
+64. 
+65.             return Ok(new { success = true });
+66.         }
+67. 
+68.         [HttpGet("statistics/users")]
+69.         public IActionResult GetUserStatistics()
+70.         {
+71. 
+72.             var users = _userRepository.GetUsers();
+73.             var statistics = new
+74.             {
+75.                 TotalUsers = users.Count,
+76.                 Admins = users.Count(u => u.Admin == true)
+77.             };
+78. 
+79.             return Ok(new { success = true, data = statistics });
+80.         }
+81. 
+82.         [HttpDelete("goals/{id}")]
+83.         public IActionResult DeleteTask(int id)
+84.         {
+85. 
+86.             if (!_taskRepository.DeleteTask(id))
+87.                 return NotFound(new { success = false, message = $"Goal with ID {id} not found." });
+88. 
+89.             return Ok(new { success = true });
+90.         }
+91.     }
+92. }
+
+В.3 Резервне копіювання користувацьких даних
+
+GitHub репозиторій: https://github.com/NureHlynskyiVadym/apz-pzpi-22-2-hlynskyi-vadym/blob/main/Lab2/pzpi-22-2-hlynskyi-vadym-lab2/Controllers/DatabaseController.cs
+
+1. using LevelUp.Services;
+2. using Microsoft.AspNetCore.Authorization;
+3. using Microsoft.AspNetCore.Mvc;
+4. 
+5. namespace LevelUp.Controllers
+6. {
+7.     [ApiController]
+8.     [Route("api/[controller]")]
+9.     public class DatabaseController : ControllerBase
+10.     {
+11.         private readonly DatabaseBackupService _backupService;
+12.         private readonly IWebHostEnvironment _env;
+13. 
+14.         public DatabaseController(DatabaseBackupService backupService, IWebHostEnvironment env)
+15.         {
+16.             _backupService = backupService;
+17.             _env = env;
+18.         }
+19. 
+20.         [HttpPost("backup")]
+21.         [Authorize(Roles = "Admin")]
+22.         public async Task<IActionResult> BackupDatabase()
+23.         {
+24.             var backupDirectory = Path.Combine(_env.ContentRootPath, "Backups");
+25.             if (!Directory.Exists(backupDirectory))
+26.                 Directory.CreateDirectory(backupDirectory);
+27. 
+28.             try
+29.             {
+30.                 var backupFilePath = await _backupService.BackupDatabaseAsync(backupDirectory);
+31.                 return Ok(new { success = true, backupFile = Path.GetFileName(backupFilePath) });
+32.             }
+33.             catch (Exception ex)
+34.             {
+35.                 return StatusCode(500, new { success = false, message = ex.Message });
+36.             }
+37.         }
+38.     }
+39. }
